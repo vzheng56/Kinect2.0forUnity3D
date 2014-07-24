@@ -1,6 +1,7 @@
 ﻿Kinect4Unity3D
 ==============
 
+A Unity3D ToolKit  for Kinect2.0 
 
 这是一款为Unity3D做的Kinect2.0 的插件，主要的功能包括：
 1. 彩色图像、深度图像（开发中）、红外图像、背景消除图像
@@ -10,7 +11,7 @@
 
 PS： 功能在更新中，如果不同步Git也行，直接下载Package里面的包就行了，玩的愉快！
 
-A Unity3D ToolKit  for Kinect2.0 
+
 
 
 
