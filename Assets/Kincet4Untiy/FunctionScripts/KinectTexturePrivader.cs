@@ -30,10 +30,10 @@ namespace Kinect4Unity
             get { return _kinectColorTexture; }
         }
 
-        private Texture2D _kinectInfterateTexture;
-        public Texture2D KinectInfreratedTexture
+        private Texture2D _kinectInfraredTexture;
+        public Texture2D KinectInfraredtedTexture
         {
-            get { return _kinectInfterateTexture; }
+            get { return _kinectInfraredTexture; }
         }
 
         #endregion
@@ -48,6 +48,9 @@ namespace Kinect4Unity
 
         private ColorSpacePoint[] colorPoints = null;
 
+
+        private ushort[] _kinectInfraredData;
+        private byte[] _kinectInfraredRawData;
 
         static KinectTexturePrivader myInstance;
         static int instances = 0;
@@ -79,9 +82,10 @@ namespace Kinect4Unity
 
             _kinectSenesor = KinectSensor.GetDefault();
 
-            _multiSourceReader = _kinectSenesor.OpenMultiSourceFrameReader(FrameSourceTypes.Color | FrameSourceTypes.Depth | FrameSourceTypes.BodyIndex | FrameSourceTypes.Body);
+            _multiSourceReader = _kinectSenesor.OpenMultiSourceFrameReader(FrameSourceTypes.Color | FrameSourceTypes.Depth | FrameSourceTypes.BodyIndex | FrameSourceTypes.Infrared);
             _coordinateMapper = _kinectSenesor.CoordinateMapper;
 
+            //构建深度图像的初始化
             FrameDescription depthFrameDisc = _kinectSenesor.DepthFrameSource.FrameDescription;
             int depthWidth = depthFrameDisc.Width;
             int depthHeight = depthFrameDisc.Height;
@@ -93,11 +97,21 @@ namespace Kinect4Unity
 
             _backGroundRemoveTexture = new Texture2D(depthWidth, depthHeight, TextureFormat.RGBA32, false);
 
-            FrameDescription colorFrameDesc = _kinectSenesor.ColorFrameSource.FrameDescription;
-            int colorWidth = colorFrameDesc.Width;
-            int colorHeight = colorFrameDesc.Height;
-
+            //构建彩色图像的初始化
+            FrameDescription colorFrameDisc = _kinectSenesor.ColorFrameSource.FrameDescription;
+            int colorWidth = colorFrameDisc.Width;
+            int colorHeight = colorFrameDisc.Height;
+            _kinectColorTexture = new Texture2D(colorWidth, colorHeight, TextureFormat.RGBA32, false);
             this.colorFrameData = new byte[colorWidth * colorHeight * bytesPerPixel];
+
+            //构建红外图像的初始化
+            FrameDescription infraredFrameDisc = _kinectSenesor.InfraredFrameSource.FrameDescription;
+            int infraredWidth = infraredFrameDisc.Width;
+            int infraredHeight = infraredFrameDisc.Height;
+            _kinectInfraredData = new ushort[infraredFrameDisc.LengthInPixels];
+            _kinectInfraredRawData = new byte[infraredFrameDisc.LengthInPixels * 4];
+            _kinectInfraredTexture = new Texture2D(infraredWidth, infraredHeight, TextureFormat.RGBA32, false);
+
 
             if (!_kinectSenesor.IsOpen)
             {
@@ -122,7 +136,7 @@ namespace Kinect4Unity
             bool colorFrameProcessed = false;
             bool depthFrameProcessed = false;
             bool bodyIndexFrameProcessed = false;
-            bool bodyFrameProcessed = false;
+            bool infraredFrameProcessed = false;
 
             #region _multiSourceReader Begin Work
             if (_multiSourceReader != null)
@@ -138,7 +152,7 @@ namespace Kinect4Unity
                         {
                             using (BodyIndexFrame bodyIndexFrame = multiSourceFrame.BodyIndexFrameReference.AcquireFrame())
                             {
-                                using (BodyFrame bodyFrame = multiSourceFrame.BodyFrameReference.AcquireFrame())
+                                using (InfraredFrame infraredFrame = multiSourceFrame.InfraredFrameReference.AcquireFrame())
                                 {
                                     if (depthFrame != null)
                                     {
@@ -169,6 +183,8 @@ namespace Kinect4Unity
                                             else
                                             {
                                                 colorFrame.CopyConvertedFrameDataToArray(this.colorFrameData, ColorImageFormat.Rgba);
+                                                _kinectColorTexture.LoadRawTextureData(colorFrameData);
+                                                _kinectColorTexture.Apply();
                                             }
 
                                             colorFrameProcessed = true;
@@ -188,15 +204,34 @@ namespace Kinect4Unity
                                             bodyIndexFrameProcessed = true;
                                         }
                                     }
+
+                                    if (infraredFrame != null)
+                                    {
+                                        Debug.Log("AAA");
+                                        infraredFrame.CopyFrameDataToArray(_kinectInfraredData);
+                                        int index = 0;
+                                        foreach (var ir in _kinectInfraredData)
+                                        {
+                                            byte intensity = (byte)(ir >> 8);
+                                            _kinectInfraredRawData[index++] = intensity;
+                                            _kinectInfraredRawData[index++] = intensity;
+                                            _kinectInfraredRawData[index++] = intensity;
+                                            _kinectInfraredRawData[index++] = 255; // Alpha
+                                        }
+
+                                        _kinectInfraredTexture.LoadRawTextureData(_kinectInfraredRawData);
+                                        _kinectInfraredTexture.Apply();
+                                        infraredFrameProcessed = true;
+                                    }
+                                    multiSourceFrameProcessed = true;
                                 }
-                                multiSourceFrameProcessed = true;
                             }
                         }
                     }
                 }
 
                 // we got all frames
-                if (multiSourceFrameProcessed && depthFrameProcessed && colorFrameProcessed && bodyIndexFrameProcessed)
+                if (multiSourceFrameProcessed && depthFrameProcessed && colorFrameProcessed && bodyIndexFrameProcessed && infraredFrameProcessed)
                 {
                     _coordinateMapper.MapDepthFrameToColorSpace(this.depthFrameData, this.colorPoints);
 
@@ -257,7 +292,6 @@ namespace Kinect4Unity
         {
             _backGroundRemoveTexture.LoadRawTextureData(displayPixels);
             _backGroundRemoveTexture.Apply();
-            Debug.Log("ASAS");
         }
 
         void OnApplicationQuit()

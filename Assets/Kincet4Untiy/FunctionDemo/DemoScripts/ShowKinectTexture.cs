@@ -39,7 +39,7 @@ public class ShowKinectTexture : MonoBehaviour
                 Debug.LogError("This API is Not Complete ~");
                 break;
             case KinectTextureType.TEXTURETYPPE_INFTATED:
-                _TextureGet = KinectTexturePrivader.Instance.KinectInfreratedTexture;
+                _TextureGet = KinectTexturePrivader.Instance.KinectInfraredtedTexture;
                 _PlanMatarial.shader = Shader.Find("Diffuse");
                 _PlanMatarial.SetTexture("_MainTex", _TextureGet);
                 break;
